@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Plant Monitor v4.0 — ESP32 IoT Mock Simulator</title>
+  <style>
+    :root {
+      --bg-base: #0b0f17;
+      --bg-card: #121826;
+      --bg-card-alt: #182133;
+      --border: #243047;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-green: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+      --oled-bg: #040912;
+      --oled-pixel: #60e8ff;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #132238 0%, var(--bg-base) 55%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    button {
+      font-family: var(--font-sans);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-card-alt);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button:hover {
+      background: #222f47;
+      border-color: #3b4f73;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #059669, #10b981);
+      border-color: #34d399;
+      color: #03150e;
+    }
+
+    button.primary:hover {
+      filter: brightness(1.08);
+    }
+
+    button.danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.45);
+      color: #fca5a5;
+    }
+
+    button.active-toggle {
+      background: rgba(59, 130, 246, 0.22);
+      border-color: var(--accent-blue);
+      color: #93c5fd;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .gpio-tag {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(148, 163, 184, 0.12);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+
+    .kpi-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .badge-ok { background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .badge-warn { background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .badge-dry { background: rgba(239, 68, 68, 0.16); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+    .badge-blue { background: rgba(59, 130, 246, 0.18); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.35s ease, background 0.35s ease;
+    }
+
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 1.15fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1080px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Hardware Twin Panel */
+    .oled-bezel {
+      background: linear-gradient(160deg, #1b2434, #0d131f);
+      border: 2px solid #2b3a55;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .oled-label-row {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+
+    #oledCanvas {
+      width: 100%;
+      max-width: 384px;
+      aspect-ratio: 2 / 1;
+      background: var(--oled-bg);
+      border: 2px solid #1d2c44;
+      border-radius: 6px;
+      image-rendering: pixelated;
+      box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.85), 0 0 22px rgba(96, 232, 255, 0.12);
+    }
+
+    /* Hardware Controls Row (Buttons, RGB, Relay, Buzzer) */
+    .hw-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 560px) {
+      .hw-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hw-box {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .hw-box-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .tactile-btn {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      justify-content: center;
+      background: #1f2b40;
+      border: 1px solid #354769;
+      box-shadow: 0 4px 0 #0d131f;
+    }
+
+    .tactile-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #0d131f;
+    }
+
+    .tactile-btn.pump-on {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      border-color: #60a5fa;
+      color: #ffffff;
+    }
+
+    /* RGB LED Visualizer */
+    .rgb-visual {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .led-bulb {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      transition: all 0.25s ease;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .led-bulb::after {
+      content: '';
+      position: absolute;
+      top: 7px;
+      left: 9px;
+      width: 12px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.45);
+      border-radius: 50%;
+      transform: rotate(-28deg);
+    }
+
+    .pin-logic-list {
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .pin-low { color: #34d399; font-weight: 700; }
+    .pin-high { color: #64748b; }
+
+    /* Relay & Pump Visual */
+    .relay-visual {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .relay-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .water-flow {
+      height: 10px;
+      width: 100%;
+      border-radius: 999px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .water-flow-bar {
+      height: 100%;
+      width: 0%;
+      background: repeating-linear-gradient(
+        -45deg,
+        #3b82f6,
+        #3b82f6 10px,
+        #06b6d4 10px,
+        #06b6d4 20px
+      );
+      background-size: 28px 28px;
+      transition: width 0.3s ease;
+    }
+
+    .water-flow.active .water-flow-bar {
+      width: 100%;
+      animation: flowMove 0.65s linear infinite;
+    }
+
+    @keyframes flowMove {
+      from { background-position: 0 0; }
+      to { background-position: 28px 0; }
+    }
+
+    /* Buzzer Indicator */
+    .buzzer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .buzzer-wave {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--accent-cyan);
+      min-height: 20px;
+    }
+
+    /* Sliders & Controls */
+    .control-group {
+      margin-bottom: 14px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.84rem;
+      margin-bottom: 6px;
+    }
+
+    .control-label span.val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .preset-row button {
+      font-size: 0.78rem;
+      padding: 6px 10px;
+    }
+
+    .calib-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .calib-field label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-bottom: 4px;
+    }
+
+    .calib-field input {
+      width: 100%;
+      background: #0d131f;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+
+    /* Bottom Grid: Chart + Serial Monitor */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1080px) {
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #chartCanvas {
+      width: 100%;
+      height: 260px;
+      display: block;
+      background: #0c121e;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    /* Serial Console */
+    .serial-console {
+      background: #070b12;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      height: 290px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      line-height: 1.45;
+      color: #a7f3d0;
+      white-space: pre-wrap;
+    }
+
+    .serial-console .ts {
+      color: #64748b;
+    }
+
+    /* Pinout Inspector Table */
+    .pin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .pin-item {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+    }
+
+    .pin-item .pin-name {
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .pin-item .pin-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .pin-state {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: #0d131f;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Top Bar -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🌱</div>
+        <div>
+          <h1>Smart Plant Monitor v4.0 — Interactive Mock Simulator</h1>
+          <p>ESP32 DevKit V1 • SSD1306 OLED • DHT11 • Resistive Soil Sensor • Hi-Z Relay • Common Anode RGB</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="pill">
+          <span class="dot" id="simDot"></span>
+          <span id="simStatusText">LIVE SIM (2s Cycle)</span>
+        </div>
+        <button id="btnAutoSim" class="active-toggle">⏸ Pause Auto-Env</button>
+        <button id="btnAudio" class="active-toggle">🔊 Buzzer Sound: ON</button>
+        <button id="btnReboot">🔄 Reboot ESP32</button>
+      </div>
+    </header>
+
+    <!-- Live Telemetry KPI Row -->
+    <section class="kpi-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Soil Moisture</span>
+          <span class="gpio-tag">D35 (ADC1_CH7)</span>
+        </div>
+        <div class="kpi-value" id="kpiSoilPct">--%</div>
+        <div class="kpi-sub">
+          <span id="kpiSoilRaw">Raw ADC: ----</span>
+          <span class="badge badge-ok" id="kpiSoilBadge">OK</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="kpiSoilBar" style="width: 50%; background: var(--accent-green);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Soil Digital & Voltage</span>
+          <span class="gpio-tag">D34 (DOUT)</span>
+        </div>
+        <div class="kpi-value" id="kpiVoltage">---- mV</div>
+        <div class="kpi-sub">
+          <span>Comparator DOUT:</span>
+          <span class="badge badge-ok" id="kpiDigitalBadge">LOW (Wet)</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="kpiVoltBar" style="width: 75%; background: var(--accent-cyan);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Air Temperature</span>
+          <span class="gpio-tag">D33 (DHT11)</span>
+        </div>
+        <div class="kpi-value" id="kpiTemp">--.- °C</div>
+        <div class="kpi-sub">
+          <span id="kpiTempF">--.- °F</span>
+          <span class="badge badge-blue">DHT11 OK</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="kpiTempBar" style="width: 52%; background: var(--accent-amber);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Air Humidity</span>
+          <span class="gpio-tag">D33 (DHT11)</span>
+        </div>
+        <div class="kpi-value" id="kpiHum">--.- %</div>
+        <div class="kpi-sub">
+          <span id="kpiHumLabel">Comfortable</span>
+          <span class="badge badge-blue">RH%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="kpiHumBar" style="width: 60%; background: var(--accent-purple);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">5V Relay Pump</span>
+          <span class="gpio-tag">D32 (Hi-Z)</span>
+        </div>
+        <div class="kpi-value" id="kpiPumpState">OFF</div>
+        <div class="kpi-sub">
+          <span id="kpiPumpPinMode">Mode: INPUT (Hi-Z)</span>
+          <span class="badge badge-ok" id="kpiPumpTime">0s run</span>
+        </div>
+        <div class="water-flow" id="kpiWaterFlow" style="margin-top: 10px;">
+          <div class="water-flow-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Interactive Twin & Environment Controls -->
+    <section class="main-grid">
+      <!-- Left: Hardware Digital Twin -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">ESP32 Hardware Digital Twin</span>
+          <span class="gpio-tag">OLED 0x3C • SDA=21 SCL=22</span>
+        </div>
+
+        <!-- 0.96" OLED Display Replica -->
+        <div class="oled-bezel">
+          <div class="oled-label-row">
+            <span>0.96" SSD1306 I2C OLED (128×64)</span>
+            <span id="oledPageLabel">Screen 0 / 3</span>
+          </div>
+          <canvas id="oledCanvas" width="256" height="128"></canvas>
+          <div class="oled-label-row">
+            <span>VCC: 3.3V • GND • SCL: D22 • SDA: D21</span>
+            <span id="oledRefreshInfo">2000ms refresh</span>
+          </div>
+        </div>
+
+        <!-- Tactile Buttons + RGB + Relay/Buzzer -->
+        <div class="hw-row">
+          <!-- Push Button 1 -->
+          <div class="hw-box">
+            <div class="hw-box-head">
+              <span>Push Button 1</span>
+              <span class="gpio-tag">D18 (PULL-UP)</span>
+            </div>
+            <button class="tactile-btn" id="btnScreenCycle">📺 Cycle OLED Screen</button>
+            <div style="font-size: 0.73rem; color: var(--text-muted); font-family: var(--font-mono);">
+              Click -> NOTE_A5 (880Hz, 40ms)
+            </div>
+          </div>
+
+          <!-- Push Button 2 -->
+          <div class="hw-box">
+            <div class="hw-box-head">
+              <span>Push Button 2</span>
+              <span class="gpio-tag">D19 (PULL-UP)</span>
+            </div>
+            <button class="tactile-btn" id="btnPumpToggle">💧 Toggle 5V Pump</button>
+            <div style="font-size: 0.73rem; color: var(--text-muted); font-family: var(--font-mono);">
+              ON: C6 (1047Hz) | OFF: C5 (523Hz)
+            </div>
+          </div>
+
+          <!-- Common Anode RGB LED -->
+          <div class="hw-box">
+            <div class="hw-box-head">
+              <span>Common Anode RGB LED</span>
+              <span class="gpio-tag">D14 / D27 / D26</span>
+            </div>
+            <div class="rgb-visual">
+              <div class="led-bulb" id="rgbBulb"></div>
+              <div class="pin-logic-list">
+                <div id="rgbMeaning" style="color: var(--text-main); font-weight: 700;">GREEN — Healthy Soil</div>
+                <div id="rgbPins">R(14): HIGH | G(27): LOW | B(26): HIGH</div>
+                <div style="font-size: 0.68rem;">Anode @ 3.3V (LOW = ON)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Passive Buzzer & Relay Status -->
+          <div class="hw-box">
+            <div class="hw-box-head">
+              <span>Passive Buzzer & Relay</span>
+              <span class="gpio-tag">D25 / D32</span>
+            </div>
+            <div class="buzzer-row">
+              <span style="font-size: 0.8rem;">🎵 Tone Output:</span>
+              <span class="buzzer-wave" id="buzzerStatus">Idle (0 Hz)</span>
+            </div>
+            <div class="relay-visual">
+              <div class="relay-indicator">
+                <span class="dot" id="relayDot" style="background: #475569; box-shadow: none; animation: none;"></span>
+                <span id="relayText">Relay: OPEN (OFF)</span>
+              </div>
+              <button style="padding: 4px 10px; font-size: 0.72rem;" id="btnTestChime">▶ Intro Chime</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Mock Sensor & Calibration Controls -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Mock Environment & Sensor Inputs</span>
+          <span class="gpio-tag">Live Simulation Controls</span>
+        </div>
+
+        <div class="preset-row">
+          <button onclick="applyPreset('dry')">🏜 Dry Soil (Needs Water)</button>
+          <button onclick="applyPreset('moderate')">🌤 Moderate Soil</button>
+          <button onclick="applyPreset('healthy')">🌿 Healthy Moist</button>
+          <button onclick="applyPreset('wet')">💧 Saturated / Water</button>
+          <button onclick="applyPreset('hot')">☀️ Hot & Dry Day</button>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Soil Raw ADC Input (D35 — 12-bit: 0–4095)</span>
+            <span class="val" id="lblSliderSoil">3300 ADC</span>
+          </div>
+          <input type="range" id="sliderSoilRaw" min="2200" max="4095" step="5" value="3300" />
+          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">
+            <span>2200 (Very Wet)</span>
+            <span>2800 (Calib Wet 100%)</span>
+            <span>4000 (Calib Dry 0%)</span>
+            <span>4095</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Soil Potentiometer Digital Threshold (D34 DOUT flips HIGH above this)</span>
+            <span class="val" id="lblSliderPot">3600 ADC</span>
+          </div>
+          <input type="range" id="sliderPotThreshold" min="2600" max="4050" step="10" value="3600" />
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>DHT11 Air Temperature (D33)</span>
+            <span class="val" id="lblSliderTemp">27.4 °C</span>
+          </div>
+          <input type="range" id="sliderTemp" min="10" max="50" step="0.1" value="27.4" />
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>DHT11 Air Humidity (D33)</span>
+            <span class="val" id="lblSliderHum">61.0 %</span>
+          </div>
+          <input type="range" id="sliderHum" min="15" max="95" step="0.5" value="61.0" />
+        </div>
+
+        <!-- Editable v4.0 Calibration Constants -->
+        <div class="calib-grid">
+          <div class="calib-field">
+            <label for="inDryVal">SOIL_DRY_VALUE</label>
+            <input type="number" id="inDryVal" value="4000" min="1000" max="4095" />
+          </div>
+          <div class="calib-field">
+            <label for="inWetVal">SOIL_WET_VALUE</label>
+            <input type="number" id="inWetVal" value="2800" min="0" max="4000" />
+          </div>
+          <div class="calib-field">
+            <label for="inThreshPct">DRY_THRESHOLD_%</label>
+            <input type="number" id="inThreshPct" value="30" min="5" max="90" />
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; font-size: 0.78rem; color: var(--text-muted); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 10px 12px;">
+          💡 <strong>Auto-Environment Physics:</strong> While Auto-Env is active, soil naturally evaporates slowly over time. Turning on the <strong>5V Pump</strong> rapidly lowers the raw ADC (increasing moisture %) just like watering a real potted plant!
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom: Live Telemetry Chart + Serial Monitor -->
+    <section class="bottom-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Live Telemetry History</span>
+          <button style="padding: 4px 10px; font-size: 0.74rem;" id="btnClearChart">Clear Graph</button>
+        </div>
+        <canvas id="chartCanvas" width="760" height="260"></canvas>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-swatch" style="background: #10b981;"></span>Soil Moisture (%)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background: #f59e0b;"></span>Temperature (°C)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background: #a855f7;"></span>Humidity (%)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background: rgba(59, 130, 246, 0.45); height: 10px;"></span>Pump Active Window</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Serial Monitor (115200 Baud)</span>
+          <div style="display: flex; gap: 6px;">
+            <button style="padding: 4px 10px; font-size: 0.74rem;" id="btnCopySerial">Copy</button>
+            <button style="padding: 4px 10px; font-size: 0.74rem;" id="btnClearSerial">Clear</button>
+          </div>
+        </div>
+        <div class="serial-console" id="serialConsole"></div>
+      </div>
+    </section>
+
+    <!-- Full ESP32 GPIO Pinout Live Inspector -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-title">Live ESP32 DevKit V1 GPIO State Inspector (v4.0 Map)</span>
+        <span class="gpio-tag">12 Active GPIOs</span>
+      </div>
+      <div class="pin-grid" id="pinGrid"></div>
+    </section>
+  </div>
+
+  <script>
+    // ================= NOTE FREQUENCIES (Exact match to v4.0) =================
+    const NOTE_C5 = 523;
+    const NOTE_E5 = 659;
+    const NOTE_G5 = 784;
+    const NOTE_A5 = 880;
+    const NOTE_C6 = 1047;
+
+    // ================= SYSTEM STATE (Mirrors smart_plant_monitor_v4.ino) =================
+    const state = {
+      soilDryValue: 4000,
+      soilWetValue: 2800,
+      dryThresholdPct: 30,
+      potThresholdAdc: 3600,
+
+      rawSoilMoisture: 3300,
+      soilPercentage: 58,
+      digitalSoilVal: 0, // 0 = LOW (Wet), 1 = HIGH (Dry)
+      temperature: 27.4,
+      humidity: 61.0,
+
+      pumpState: false,
+      pumpRunSeconds: 0,
+      currentScreen: 0,
+      totalScreens: 4,
+
+      rgb: { r: false, g: true, b: false },
+      autoEnvEnabled: true,
+      audioEnabled: true,
+      booting: false,
+      lastToneLabel: 'Idle (0 Hz)',
+
+      history: [] // { soil, temp, hum, pump }
+    };
+
+    const MAX_HISTORY = 45;
+    let audioCtx = null;
+    let buzzerTimeout = null;
+
+    // ================= WEB AUDIO PASSIVE BUZZER =================
+    function ensureAudioCtx() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, durationMs, label = '') {
+      const statusEl = document.getElementById('buzzerStatus');
+      state.lastToneLabel = `${freq} Hz (${durationMs}ms)${label ? ' ' + label : ''}`;
+      statusEl.textContent = `🔊 ${state.lastToneLabel}`;
+      clearTimeout(buzzerTimeout);
+      buzzerTimeout = setTimeout(() => {
+        state.lastToneLabel = 'Idle (0 Hz)';
+        statusEl.textContent = 'Idle (0 Hz)';
+        renderPinout();
+      }, Math.max(durationMs + 150, 320));
+      renderPinout();
+
+      if (!state.audioEnabled) return;
+      try {
+        ensureAudioCtx();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square'; // Passive piezo buzzer sounds like a square wave
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationMs / 1000);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + durationMs / 1000);
+      } catch (e) {
+        // Ignore audio autoplay blocks before user gesture
+      }
+    }
+
+    function playIntroChime() {
+      playTone(NOTE_E5, 100, 'E5');
+      setTimeout(() => playTone(NOTE_G5, 100, 'G5'), 120);
+      setTimeout(() => playTone(NOTE_C6, 200, 'C6'), 240);
+    }
+
+    // ================= ARDUINO HELPER EQUIVALENTS =================
+    function arduinoMap(x, inMin, inMax, outMin, outMax) {
+      if (inMax === inMin) return outMin;
+      return Math.round(((x - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin);
+    }
+
+    function constrain(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    function setRGB(r, g, b) {
+      state.rgb = { r, g, b };
+      updateRgbUI();
+    }
+
+    function setPump(on) {
+      state.pumpState = on;
+      if (state.pumpState) {
+        setRGB(false, false, true); // Blue LED when pump runs
+      } else {
+        updateRgbFromMoisture();
+      }
+      updateAllUI();
+    }
+
+    function updateRgbFromMoisture() {
+      if (state.pumpState) {
+        setRGB(false, false, true);
+        return;
+      }
+      if (state.soilPercentage < state.dryThresholdPct) {
+        setRGB(true, false, false); // RED
+      } else if (state.soilPercentage < 60) {
+        setRGB(true, true, false);  // YELLOW
+      } else {
+        setRGB(false, true, false); // GREEN
+      }
+    }
+
+    // ================= SENSOR READ CYCLE (Every 2000ms) =================
+    function computeSensorDerived() {
+      state.soilPercentage = constrain(
+        arduinoMap(state.rawSoilMoisture, state.soilDryValue, state.soilWetValue, 0, 100),
+        0,
+        100
+      );
+      state.digitalSoilVal = state.rawSoilMoisture >= state.potThresholdAdc ? 1 : 0;
+      updateRgbFromMoisture();
+    }
+
+    function readSensors(logSerial = true) {
+      if (state.booting) return;
+
+      // Natural physics simulation if Auto-Env is enabled
+      if (state.autoEnvEnabled) {
+        if (state.pumpState) {
+          // Pump adds moisture -> lowers ADC reading rapidly
+          state.rawSoilMoisture = constrain(state.rawSoilMoisture - (75 + Math.round(Math.random() * 45)), 2450, 4095);
+          state.pumpRunSeconds += 2;
+        } else {
+          // Slow natural soil evaporation -> raises ADC reading slightly
+          state.rawSoilMoisture = constrain(state.rawSoilMoisture + (8 + Math.round(Math.random() * 14)), 2450, 4095);
+        }
+
+        // Subtle DHT11 ambient micro-fluctuations
+        state.temperature = Number(constrain(state.temperature + (Math.random() - 0.5) * 0.3, 12, 48).toFixed(1));
+        state.humidity = Number(constrain(state.humidity + (Math.random() - 0.5) * 0.8, 20, 92).toFixed(1));
+        syncSlidersFromState();
+      } else if (state.pumpState) {
+        state.pumpRunSeconds += 2;
+      }
+
+      computeSensorDerived();
+
+      // Append to history
+      state.history.push({
+        soil: state.soilPercentage,
+        temp: state.temperature,
+        hum: state.humidity,
+        pump: state.pumpState
+      });
+      if (state.history.length > MAX_HISTORY) state.history.shift();
+
+      if (logSerial) {
+        appendSerialDebug();
+      }
+
+      updateAllUI();
+    }
+
+    // ================= OLED 128x64 CANVAS RENDERER =================
+    function drawOLED() {
+      const canvas = document.getElementById('oledCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = 128;
+      const H = 64;
+
+      ctx.save();
+      ctx.scale(2, 2); // Render at native 128x64 logical coordinates scaled 2x cleanly
+
+      // Clear background
+      ctx.fillStyle = '#040912';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = '#60e8ff';
+      ctx.strokeStyle = '#60e8ff';
+      ctx.textBaseline = 'top';
+
+      if (state.booting) {
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText('Plant Monitor', 26, 18);
+        ctx.font = '7px monospace';
+        ctx.fillText('Booting v4.0...', 30, 34);
+        ctx.restore();
+        return;
+      }
+
+      const drawHeader = (title, x) => {
+        ctx.font = 'bold 7px monospace';
+        ctx.fillText(title, x, 1);
+        ctx.beginPath();
+        ctx.moveTo(0, 10);
+        ctx.lineTo(128, 10);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      };
+
+      switch (state.currentScreen) {
+        case 0: // Main Overview
+          drawHeader('--- SMART PLANT ---', 16);
+          ctx.font = '7px monospace';
+          const soilTag = state.soilPercentage < state.dryThresholdPct ? '[DRY]' : '[OK]';
+          ctx.fillText(`Soil:  ${state.soilPercentage} % ${soilTag}`, 2, 16);
+          ctx.fillText(`Temp:  ${state.temperature.toFixed(1)} C`, 2, 26);
+          ctx.fillText(`Hum:   ${state.humidity.toFixed(1)} %`, 2, 36);
+          ctx.fillText(`Pump:  ${state.pumpState ? '>> RUNNING <<' : 'OFF'}`, 2, 46);
+          break;
+
+        case 1: // Soil Moisture Detailed
+          drawHeader('SOIL MOISTURE STATUS', 12);
+          ctx.font = 'bold 15px monospace';
+          ctx.fillText(`${state.soilPercentage} %`, 34, 17);
+          ctx.font = '7px monospace';
+          ctx.fillText(`Raw ADC: ${state.rawSoilMoisture}`, 2, 39);
+          ctx.fillText(`Digital: ${state.digitalSoilVal === 1 ? 'Dry (HIGH)' : 'Wet (LOW)'}`, 2, 49);
+          break;
+
+        case 2: // DHT11 Climate View
+          drawHeader('CLIMATE MONITOR', 24);
+          ctx.font = '7px monospace';
+          ctx.fillText('Temperature:', 2, 16);
+          ctx.font = 'bold 15px monospace';
+          ctx.fillText(`${state.temperature.toFixed(1)} C`, 18, 28);
+          ctx.font = '7px monospace';
+          ctx.fillText(`Air Humidity: ${state.humidity.toFixed(1)} %`, 2, 50);
+          break;
+
+        case 3: // Manual Control Panel
+          drawHeader('MANUAL CONTROL', 26);
+          ctx.font = '7px monospace';
+          ctx.fillText(`Pump State: ${state.pumpState ? 'ON' : 'OFF'}`, 2, 18);
+          ctx.fillText('Btn 1: Next Screen', 2, 34);
+          ctx.fillText('Btn 2: Toggle Pump', 2, 45);
+          break;
+      }
+
+      // Visual Screen Indicator Dots (exact match to v4.0 loop)
+      for (let i = 0; i < state.totalScreens; i++) {
+        const cx = 105 + i * 6;
+        const cy = 59;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+        if (i === state.currentScreen) {
+          ctx.fill();
+        } else {
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+      document.getElementById('oledPageLabel').textContent = `Screen ${state.currentScreen} / ${state.totalScreens - 1}`;
+    }
+
+    // ================= RGB & UI UPDATERS =================
+    function updateRgbUI() {
+      const { r, g, b } = state.rgb;
+      const bulb = document.getElementById('rgbBulb');
+      const meaning = document.getElementById('rgbMeaning');
+      const pins = document.getElementById('rgbPins');
+
+      let color = '#1e293b';
+      let glow = 'none';
+      let text = 'OFF';
+
+      if (b && !r && !g) {
+        color = '#3b82f6';
+        glow = '0 0 24px rgba(59, 130, 246, 0.9)';
+        text = 'BLUE — Pump Watering';
+      } else if (r && !g && !b) {
+        color = '#ef4444';
+        glow = '0 0 24px rgba(239, 68, 68, 0.9)';
+        text = 'RED — Soil Dry (< ' + state.dryThresholdPct + '%)';
+      } else if (r && g && !b) {
+        color = '#facc15';
+        glow = '0 0 24px rgba(250, 204, 21, 0.85)';
+        text = 'YELLOW — Moderate Moisture';
+      } else if (!r && g && !b) {
+        color = '#10b981';
+        glow = '0 0 24px rgba(16, 185, 129, 0.9)';
+        text = 'GREEN — Optimal Health';
+      }
+
+      bulb.style.background = `radial-gradient(circle at 35% 35%, #ffffffaa, ${color} 60%)`;
+      bulb.style.boxShadow = glow;
+      meaning.textContent = text;
+
+      // Common Anode: LOW = ON, HIGH = OFF
+      pins.innerHTML =
+        `R(14): <span class="${r ? 'pin-low' : 'pin-high'}">${r ? 'LOW' : 'HIGH'}</span> | ` +
+        `G(27): <span class="${g ? 'pin-low' : 'pin-high'}">${g ? 'LOW' : 'HIGH'}</span> | ` +
+        `B(26): <span class="${b ? 'pin-low' : 'pin-high'}">${b ? 'LOW' : 'HIGH'}</span>`;
+    }
+
+    function updateKPIs() {
+      // Soil Moisture
+      document.getElementById('kpiSoilPct').textContent = `${state.soilPercentage}%`;
+      document.getElementById('kpiSoilRaw').textContent = `Raw ADC: ${state.rawSoilMoisture}`;
+      const soilBadge = document.getElementById('kpiSoilBadge');
+      const soilBar = document.getElementById('kpiSoilBar');
+      soilBar.style.width = `${state.soilPercentage}%`;
+
+      if (state.soilPercentage < state.dryThresholdPct) {
+        soilBadge.className = 'badge badge-dry';
+        soilBadge.textContent = 'DRY';
+        soilBar.style.background = 'var(--accent-red)';
+      } else if (state.soilPercentage < 60) {
+        soilBadge.className = 'badge badge-warn';
+        soilBadge.textContent = 'MODERATE';
+        soilBar.style.background = 'var(--accent-amber)';
+      } else {
+        soilBadge.className = 'badge badge-ok';
+        soilBadge.textContent = 'OPTIMAL';
+        soilBar.style.background = 'var(--accent-green)';
+      }
+
+      // Soil Voltage & Digital
+      const mv = Math.round((state.rawSoilMoisture / 4095) * 3300);
+      document.getElementById('kpiVoltage').textContent = `${mv} mV`;
+      document.getElementById('kpiVoltBar').style.width = `${Math.round((mv / 3300) * 100)}%`;
+      const digBadge = document.getElementById('kpiDigitalBadge');
+      if (state.digitalSoilVal === 1) {
+        digBadge.className = 'badge badge-dry';
+        digBadge.textContent = 'HIGH (Dry)';
+      } else {
+        digBadge.className = 'badge badge-ok';
+        digBadge.textContent = 'LOW (Wet)';
+      }
+
+      // Temp
+      const tempF = (state.temperature * 9) / 5 + 32;
+      document.getElementById('kpiTemp').textContent = `${state.temperature.toFixed(1)} °C`;
+      document.getElementById('kpiTempF').textContent = `${tempF.toFixed(1)} °F`;
+      document.getElementById('kpiTempBar').style.width = `${constrain(((state.temperature - 10) / 40) * 100, 0, 100)}%`;
+
+      // Humidity
+      document.getElementById('kpiHum').textContent = `${state.humidity.toFixed(1)} %`;
+      document.getElementById('kpiHumBar').style.width = `${state.humidity}%`;
+      document.getElementById('kpiHumLabel').textContent =
+        state.humidity < 35 ? 'Dry Air' : state.humidity > 75 ? 'Humid' : 'Comfortable';
+
+      // Pump & Relay
+      document.getElementById('kpiPumpState').textContent = state.pumpState ? 'RUNNING' : 'OFF';
+      document.getElementById('kpiPumpState').style.color = state.pumpState ? '#60a5fa' : 'var(--text-main)';
+      document.getElementById('kpiPumpPinMode').textContent = state.pumpState
+        ? 'Mode: OUTPUT (LOW)'
+        : 'Mode: INPUT (Hi-Z)';
+      document.getElementById('kpiPumpTime').textContent = `${state.pumpRunSeconds}s run`;
+
+      const flowEl = document.getElementById('kpiWaterFlow');
+      const btnPump = document.getElementById('btnPumpToggle');
+      const relayDot = document.getElementById('relayDot');
+      const relayText = document.getElementById('relayText');
+
+      if (state.pumpState) {
+        flowEl.classList.add('active');
+        btnPump.classList.add('pump-on');
+        btnPump.textContent = '🛑 Stop 5V Pump';
+        relayDot.style.background = '#3b82f6';
+        relayDot.style.boxShadow = '0 0 10px #3b82f6';
+        relayText.textContent = 'Relay: ENERGIZED (ON)';
+      } else {
+        flowEl.classList.remove('active');
+        btnPump.classList.remove('pump-on');
+        btnPump.textContent = '💧 Toggle 5V Pump';
+        relayDot.style.background = '#475569';
+        relayDot.style.boxShadow = 'none';
+        relayText.textContent = 'Relay: OPEN (OFF)';
+      }
+    }
+
+    // ================= TELEMETRY LINE CHART (Pure Canvas) =================
+    function drawChart() {
+      const canvas = document.getElementById('chartCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const pad = { top: 20, right: 16, bottom: 26, left: 36 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid lines (0, 25, 50, 75, 100)
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      for (let v = 0; v <= 100; v += 25) {
+        const y = pad.top + plotH - (v / 100) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(W - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(v.toString(), pad.left - 6, y);
+      }
+
+      // Dry threshold dashed line
+      const threshY = pad.top + plotH - (state.dryThresholdPct / 100) * plotH;
+      ctx.save();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(pad.left, threshY);
+      ctx.lineTo(W - pad.right, threshY);
+      ctx.stroke();
+      ctx.restore();
+
+      const data = state.history;
+      if (data.length < 2) return;
+
+      const stepX = plotW / (MAX_HISTORY - 1);
+
+      // Shaded Pump Active Windows
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.18)';
+      data.forEach((pt, idx) => {
+        if (pt.pump) {
+          const x = pad.left + idx * stepX;
+          ctx.fillRect(x - stepX * 0.5, pad.top, stepX, plotH);
+        }
+      });
+
+      const drawSeries = (getter, color) => {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.4;
+        data.forEach((pt, idx) => {
+          const x = pad.left + idx * stepX;
+          const y = pad.top + plotH - (constrain(getter(pt), 0, 100) / 100) * plotH;
+          if (idx === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      };
+
+      drawSeries(d => d.hum, '#a855f7');
+      drawSeries(d => d.temp, '#f59e0b');
+      drawSeries(d => d.soil, '#10b981');
+    }
+
+    // ================= SERIAL MONITOR (Exact v4.0 Format) =================
+    function appendSerialDebug() {
+      const consoleEl = document.getElementById('serialConsole');
+      const now = new Date().toLocaleTimeString();
+      const digStr = state.digitalSoilVal === 1 ? '1 (HIGH - Dry)' : '0 (LOW - Wet)';
+      const block =
+`<span class="ts">[${now}]</span>
+================ [ SENSOR DEBUG ] ================
+Soil Raw ADC (D35)   : ${state.rawSoilMoisture}
+Soil Moisture (%)    : ${state.soilPercentage}%
+Soil Digital (D34)   : ${digStr}
+Air Temperature (D33): ${state.temperature.toFixed(1)} °C
+Air Humidity         : ${state.humidity.toFixed(1)} %
+Relay Pump State     : ${state.pumpState ? 'RUNNING (ON)' : 'OFF'}
+==================================================\n`;
+
+      consoleEl.insertAdjacentHTML('beforeend', block);
+      // Keep console size reasonable
+      if (consoleEl.childNodes.length > 90) {
+        consoleEl.innerHTML = consoleEl.innerHTML.slice(consoleEl.innerHTML.length / 2);
+      }
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // ================= GPIO PINOUT INSPECTOR =================
+    function renderPinout() {
+      const mv = Math.round((state.rawSoilMoisture / 4095) * 3300);
+      const pins = [
+        { gpio: 'GPIO 21', name: 'OLED SDA', sub: 'I2C Data (0x3C)', val: 'I2C ACTIVE', color: '#60e8ff' },
+        { gpio: 'GPIO 22', name: 'OLED SCL', sub: 'I2C Clock', val: '100 kHz', color: '#60e8ff' },
+        { gpio: 'GPIO 35', name: 'Soil AO', sub: 'ADC1_CH7', val: `${state.rawSoilMoisture} (${mv}mV)`, color: '#10b981' },
+        { gpio: 'GPIO 34', name: 'Soil DO', sub: 'Digital Input', val: state.digitalSoilVal ? 'HIGH (3.3V)' : 'LOW (0V)', color: state.digitalSoilVal ? '#f87171' : '#34d399' },
+        { gpio: 'GPIO 33', name: 'DHT11 Data', sub: '1-Wire Bus', val: `${state.temperature.toFixed(1)}°C / ${state.humidity.toFixed(0)}%`, color: '#fbbf24' },
+        { gpio: 'GPIO 18', name: 'Button 1', sub: 'INPUT_PULLUP', val: 'HIGH (Idle)', color: '#cbd5e1' },
+        { gpio: 'GPIO 19', name: 'Button 2', sub: 'INPUT_PULLUP', val: 'HIGH (Idle)', color: '#cbd5e1' },
+        { gpio: 'GPIO 32', name: '5V Relay', sub: 'Hi-Z Trigger', val: state.pumpState ? 'OUT LOW (0V)' : 'IN Hi-Z', color: state.pumpState ? '#60a5fa' : '#94a3b8' },
+        { gpio: 'GPIO 25', name: 'Buzzer', sub: 'LEDC Tone', val: state.lastToneLabel.split(' ')[0] === 'Idle' ? 'LOW (0Hz)' : 'PWM TONE', color: '#22d3ee' },
+        { gpio: 'GPIO 14', name: 'RGB Red', sub: 'Common Anode', val: state.rgb.r ? 'LOW (ON)' : 'HIGH (OFF)', color: state.rgb.r ? '#f87171' : '#64748b' },
+        { gpio: 'GPIO 27', name: 'RGB Green', sub: 'Common Anode', val: state.rgb.g ? 'LOW (ON)' : 'HIGH (OFF)', color: state.rgb.g ? '#34d399' : '#64748b' },
+        { gpio: 'GPIO 26', name: 'RGB Blue', sub: 'Common Anode', val: state.rgb.b ? 'LOW (ON)' : 'HIGH (OFF)', color: state.rgb.b ? '#60a5fa' : '#64748b' }
+      ];
+
+      const grid = document.getElementById('pinGrid');
+      grid.innerHTML = pins.map(p => `
+        <div class="pin-item">
+          <div>
+            <div class="pin-name">${p.gpio} — ${p.name}</div>
+            <div class="pin-sub">${p.sub}</div>
+          </div>
+          <span class="pin-state" style="color: ${p.color};">${p.val}</span>
+        </div>
+      `).join('');
+    }
+
+    function updateAllUI() {
+      updateKPIs();
+      updateRgbUI();
+      drawOLED();
+      drawChart();
+      renderPinout();
+    }
+
+    function syncSlidersFromState() {
+      document.getElementById('sliderSoilRaw').value = state.rawSoilMoisture;
+      document.getElementById('lblSliderSoil').textContent = `${state.rawSoilMoisture} ADC`;
+      document.getElementById('sliderTemp').value = state.temperature;
+      document.getElementById('lblSliderTemp').textContent = `${state.temperature.toFixed(1)} °C`;
+      document.getElementById('sliderHum').value = state.humidity;
+      document.getElementById('lblSliderHum').textContent = `${state.humidity.toFixed(1)} %`;
+    }
+
+    // ================= PRESETS & REBOOT =================
+    window.applyPreset = function(type) {
+      if (type === 'dry') {
+        state.rawSoilMoisture = 3850;
+        state.temperature = 31.5;
+        state.humidity = 42.0;
+      } else if (type === 'moderate') {
+        state.rawSoilMoisture = 3450;
+        state.temperature = 27.0;
+        state.humidity = 58.0;
+      } else if (type === 'healthy') {
+        state.rawSoilMoisture = 3050;
+        state.temperature = 25.2;
+        state.humidity = 65.0;
+      } else if (type === 'wet') {
+        state.rawSoilMoisture = 2750;
+        state.temperature = 23.8;
+        state.humidity = 78.0;
+      } else if (type === 'hot') {
+        state.rawSoilMoisture = 3960;
+        state.temperature = 38.6;
+        state.humidity = 28.0;
+      }
+      syncSlidersFromState();
+      computeSensorDerived();
+      updateAllUI();
+    };
+
+    function rebootESP32() {
+      state.booting = true;
+      state.pumpState = false;
+      state.currentScreen = 0;
+      setRGB(false, false, false);
+      drawOLED();
+      updateKPIs();
+      renderPinout();
+
+      const consoleEl = document.getElementById('serialConsole');
+      consoleEl.insertAdjacentHTML('beforeend', `<span class="ts">[BOOT]</span> ESP32 DevKit V1 Resetting -> Plant Monitor v4.0...\n`);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+
+      playIntroChime();
+
+      setTimeout(() => {
+        state.booting = false;
+        readSensors(true);
+      }, 1300);
+    }
+
+    // ================= EVENT LISTENERS =================
+    document.getElementById('btnScreenCycle').addEventListener('click', () => {
+      if (state.booting) return;
+      state.currentScreen = (state.currentScreen + 1) % state.totalScreens;
+      playTone(NOTE_A5, 40, 'A5');
+      drawOLED();
+    });
+
+    document.getElementById('btnPumpToggle').addEventListener('click', () => {
+      if (state.booting) return;
+      setPump(!state.pumpState);
+      if (state.pumpState) {
+        playTone(NOTE_C6, 80, 'C6');
+      } else {
+        playTone(NOTE_C5, 80, 'C5');
+      }
+    });
+
+    document.getElementById('btnTestChime').addEventListener('click', playIntroChime);
+    document.getElementById('btnReboot').addEventListener('click', rebootESP32);
+
+    document.getElementById('btnAutoSim').addEventListener('click', (e) => {
+      state.autoEnvEnabled = !state.autoEnvEnabled;
+      const btn = e.currentTarget;
+      const dot = document.getElementById('simDot');
+      const statusTxt = document.getElementById('simStatusText');
+      if (state.autoEnvEnabled) {
+        btn.classList.add('active-toggle');
+        btn.textContent = '⏸ Pause Auto-Env';
+        dot.style.background = 'var(--accent-green)';
+        statusTxt.textContent = 'LIVE SIM (2s Cycle)';
+      } else {
+        btn.classList.remove('active-toggle');
+        btn.textContent = '▶ Resume Auto-Env';
+        dot.style.background = 'var(--accent-amber)';
+        statusTxt.textContent = 'MANUAL MODE';
+      }
+    });
+
+    document.getElementById('btnAudio').addEventListener('click', (e) => {
+      state.audioEnabled = !state.audioEnabled;
+      const btn = e.currentTarget;
+      if (state.audioEnabled) {
+        btn.classList.add('active-toggle');
+        btn.textContent = '🔊 Buzzer Sound: ON';
+      } else {
+        btn.classList.remove('active-toggle');
+        btn.textContent = '🔇 Buzzer Sound: OFF';
+      }
+    });
+
+    document.getElementById('sliderSoilRaw').addEventListener('input', (e) => {
+      state.rawSoilMoisture = Number(e.target.value);
+      document.getElementById('lblSliderSoil').textContent = `${state.rawSoilMoisture} ADC`;
+      computeSensorDerived();
+      updateAllUI();
+    });
+
+    document.getElementById('sliderPotThreshold').addEventListener('input', (e) => {
+      state.potThresholdAdc = Number(e.target.value);
+      document.getElementById('lblSliderPot').textContent = `${state.potThresholdAdc} ADC`;
+      computeSensorDerived();
+      updateAllUI();
+    });
+
+    document.getElementById('sliderTemp').addEventListener('input', (e) => {
+      state.temperature = Number(e.target.value);
+      document.getElementById('lblSliderTemp').textContent = `${state.temperature.toFixed(1)} °C`;
+      updateAllUI();
+    });
+
+    document.getElementById('sliderHum').addEventListener('input', (e) => {
+      state.humidity = Number(e.target.value);
+      document.getElementById('lblSliderHum').textContent = `${state.humidity.toFixed(1)} %`;
+      updateAllUI();
+    });
+
+    document.getElementById('inDryVal').addEventListener('change', (e) => {
+      state.soilDryValue = Number(e.target.value) || 4000;
+      computeSensorDerived();
+      updateAllUI();
+    });
+
+    document.getElementById('inWetVal').addEventListener('change', (e) => {
+      state.soilWetValue = Number(e.target.value) || 2800;
+      computeSensorDerived();
+      updateAllUI();
+    });
+
+    document.getElementById('inThreshPct').addEventListener('change', (e) => {
+      state.dryThresholdPct = constrain(Number(e.target.value) || 30, 5, 90);
+      computeSensorDerived();
+      updateAllUI();
+    });
+
+    document.getElementById('btnClearChart').addEventListener('click', () => {
+      state.history = [];
+      drawChart();
+    });
+
+    document.getElementById('btnClearSerial').addEventListener('click', () => {
+      document.getElementById('serialConsole').textContent = '';
+    });
+
+    document.getElementById('btnCopySerial').addEventListener('click', () => {
+      navigator.clipboard?.writeText(document.getElementById('serialConsole').textContent);
+    });
+
+    // ================= BOOTSTRAP =================
+    // Seed a short initial history so the chart looks alive immediately
+    for (let i = 0; i < 10; i++) {
+      state.history.push({
+        soil: 52 + Math.round(Math.sin(i * 0.5) * 4),
+        temp: 27.0 + Number((Math.sin(i * 0.4) * 0.6).toFixed(1)),
+        hum: 60.5 + Number((Math.cos(i * 0.3) * 1.5).toFixed(1)),
+        pump: false
+      });
+    }
+
+    syncSlidersFromState();
+    computeSensorDerived();
+    updateAllUI();
+    appendSerialDebug();
+
+    // 2000ms Sensor Polling Loop (exact match to SENSOR_INTERVAL in v4.0)
+    setInterval(() => readSensors(true), 2000);
+  </script>
+</body>
+</html>
